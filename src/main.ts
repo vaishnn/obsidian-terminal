@@ -26,7 +26,6 @@ export default class IntegratedTerminalPlugin extends Plugin {
     const leaves = workspace.getLeavesOfType(VIEW_TYPE_TERMINAL);
 
     if (leaves.length === 0) {
-      // First open — create the leaf
       const leaf = workspace.getLeaf('split', 'horizontal');
       await leaf.setViewState({ type: VIEW_TYPE_TERMINAL, active: true });
       workspace.setActiveLeaf(leaf, { focus: true });
@@ -35,24 +34,27 @@ export default class IntegratedTerminalPlugin extends Plugin {
     }
 
     const leaf = leaves[0];
-
     if (this.terminalHidden) {
       this.showTerminal(leaf);
-    } else if (workspace.activeLeaf === leaf) {
-      // Focused and visible → collapse
-      this.hideTerminal(leaf);
     } else {
-      // Visible but not focused → just focus it
-      workspace.revealLeaf(leaf);
-      workspace.setActiveLeaf(leaf, { focus: true });
+      this.hideTerminal(leaf);
     }
   }
 
+  private leafEl(leaf: WorkspaceLeaf): HTMLElement {
+    // Obsidian's workspace-leaf is the flex-child that controls panel sizing.
+    // leaf.containerEl might be an inner element; walk up to find .workspace-leaf.
+    return (leaf.containerEl.closest('.workspace-leaf') as HTMLElement) ?? leaf.containerEl;
+  }
+
   private hideTerminal(leaf: WorkspaceLeaf) {
-    const el = leaf.containerEl;
-    el.style.flex       = '0 0 0';
-    el.style.minHeight  = '0';
-    el.style.overflow   = 'hidden';
+    const el = this.leafEl(leaf);
+    // Use setProperty with 'important' so we override Obsidian's own inline sizing
+    el.style.setProperty('flex', '0 0 0', 'important');
+    el.style.setProperty('height', '0', 'important');
+    el.style.setProperty('max-height', '0', 'important');
+    el.style.setProperty('min-height', '0', 'important');
+    el.style.setProperty('overflow', 'hidden', 'important');
     this.terminalHidden = true;
 
     const fallback = this.app.workspace.getMostRecentLeaf();
@@ -62,10 +64,12 @@ export default class IntegratedTerminalPlugin extends Plugin {
   }
 
   private showTerminal(leaf: WorkspaceLeaf) {
-    const el = leaf.containerEl;
-    el.style.flex      = '';
-    el.style.minHeight = '';
-    el.style.overflow  = '';
+    const el = this.leafEl(leaf);
+    el.style.removeProperty('flex');
+    el.style.removeProperty('height');
+    el.style.removeProperty('max-height');
+    el.style.removeProperty('min-height');
+    el.style.removeProperty('overflow');
     this.terminalHidden = false;
 
     this.app.workspace.revealLeaf(leaf);
