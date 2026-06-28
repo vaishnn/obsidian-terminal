@@ -1,0 +1,48 @@
+/* Integrated Terminal — custom styles (xterm.css is prepended by build script) */
+
+.ot-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  background-color: var(--background-primary);
+  overflow: hidden;
+}
+
+.ot-inner {
+  flex: 1;
+  overflow: hidden;
+  padding: 6px 8px 4px;
+}
+
+/* Make xterm fill the container fully */
+.ot-inner .xterm {
+  height: 100%;
+}
+
+.ot-inner .xterm-screen {
+  height: 100% !important;
+}
+
+.ot-inner .xterm-viewport {
+  overflow-y: hidden !important;
+  background-color: transparent !important;
+}
+
+/* Scrollbar styling */
+.ot-inner .xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ot-inner .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ot-inner .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 3px;
+}
+
+.ot-inner .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #585b70;
+}
