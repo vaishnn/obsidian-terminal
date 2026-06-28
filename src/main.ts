@@ -34,7 +34,7 @@ export default class IntegratedTerminalPlugin extends Plugin {
     }
 
     const leaf = leaves[0];
-    const isHidden = !!this.findHiddenEl(leaf);
+    const isHidden = leaf.containerEl.hasAttribute(HIDDEN_ATTR);
 
     if (isHidden) {
       this.showTerminal(leaf);
@@ -46,30 +46,31 @@ export default class IntegratedTerminalPlugin extends Plugin {
     }
   }
 
-  // Find the element that was previously hidden (leaf or its parent split)
-  private findHiddenEl(leaf: WorkspaceLeaf): HTMLElement | null {
-    if (leaf.containerEl.hasAttribute(HIDDEN_ATTR)) return leaf.containerEl;
-    const parent = leaf.containerEl.parentElement;
-    if (parent?.hasAttribute(HIDDEN_ATTR)) return parent;
-    return null;
+  private panelEl(leaf: WorkspaceLeaf): HTMLElement {
+    // Walk up from the leaf's container to find the workspace-split or workspace-tabs
+    // that is the direct child of the root split — that's the whole "panel" row.
+    let el: HTMLElement = leaf.containerEl;
+    while (el.parentElement) {
+      const p = el.parentElement;
+      if (p.classList.contains('mod-root') || p.classList.contains('workspace')) break;
+      el = p;
+    }
+    return el;
   }
 
   private hideTerminal(leaf: WorkspaceLeaf) {
-    // Walk up to the first workspace-split/tabs ancestor — that's the full panel chrome
-    const parent = leaf.containerEl.parentElement;
-    const target: HTMLElement = (parent && (
-      parent.classList.contains('workspace-split') ||
-      parent.classList.contains('workspace-tabs')
-    )) ? parent : leaf.containerEl;
+    const el = this.panelEl(leaf);
 
-    target.style.display = 'none';
-    target.setAttribute(HIDDEN_ATTR, 'true');
+    // Move off-screen using fixed positioning — takes element out of layout flow
+    // so no gap is left, but the DOM (and shell process) stays fully alive.
+    el.style.cssText += ';position:fixed!important;transform:translateX(-99999px)!important;pointer-events:none!important;';
+    leaf.containerEl.setAttribute(HIDDEN_ATTR, 'true');
 
-    // Hide the resize handle that sits just before this panel
-    const prev = target.previousElementSibling as HTMLElement | null;
+    // Hide the resize handle that was between the notes area and this panel
+    const prev = el.previousElementSibling as HTMLElement | null;
     if (prev?.classList.contains('workspace-leaf-resize-handle')) {
-      prev.style.display = 'none';
       prev.setAttribute(HANDLE_ATTR, 'true');
+      prev.style.cssText += ';display:none!important;';
     }
 
     const fallback = this.app.workspace.getMostRecentLeaf();
@@ -79,13 +80,15 @@ export default class IntegratedTerminalPlugin extends Plugin {
   }
 
   private showTerminal(leaf: WorkspaceLeaf) {
-    const target = this.findHiddenEl(leaf);
-    if (!target) return;
+    const el = this.panelEl(leaf);
 
-    target.style.display = '';
-    target.removeAttribute(HIDDEN_ATTR);
+    // Strip the three properties we added; leave everything else untouched
+    el.style.position   = '';
+    el.style.transform  = '';
+    el.style.pointerEvents = '';
+    leaf.containerEl.removeAttribute(HIDDEN_ATTR);
 
-    const prev = target.previousElementSibling as HTMLElement | null;
+    const prev = el.previousElementSibling as HTMLElement | null;
     if (prev?.hasAttribute(HANDLE_ATTR)) {
       prev.style.display = '';
       prev.removeAttribute(HANDLE_ATTR);
